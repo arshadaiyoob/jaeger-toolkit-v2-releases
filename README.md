@@ -9,7 +9,7 @@
   <img alt="A failed trace in Jaeger Toolkit: the verdict comes first, then the path the failure took and the timeline." src="docs/shots/trace-dark.jpg">
 </picture>
 
-> Screenshots use sample traces.
+> Screenshots use sample traces, with example answers from Claude.
 
 ## What it does
 
