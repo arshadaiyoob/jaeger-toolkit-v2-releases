@@ -1,0 +1,40 @@
+name: Testing access
+description: Ask for the alpha, or join the beta waitlist. Access is given to the GitHub account this is filed from.
+title: 'Testing access'
+labels: [access-request]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Test builds are only for invited GitHub accounts. When a maintainer approves this, your account is invited to the
+        testers repository, and GitHub emails the invite to the address on your account.
+  - type: dropdown
+    id: channel
+    attributes:
+      label: Channel
+      options:
+        - Alpha
+        - Beta
+    validations:
+      required: true
+  - type: input
+    id: team
+    attributes:
+      label: Team
+      placeholder: For example, Payments platform
+    validations:
+      required: true
+  - type: textarea
+    id: use
+    attributes:
+      label: How you will use it
+      description: Which Jaeger host, and what you usually look for. Shown to the maintainers.
+    validations:
+      required: false
+  - type: checkboxes
+    id: feedback
+    attributes:
+      label: Testing
+      options:
+        - label: I will report what breaks, as an issue here.
+          required: true

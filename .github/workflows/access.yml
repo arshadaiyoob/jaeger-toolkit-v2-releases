@@ -1,0 +1,63 @@
+name: Testing access
+
+# Requests for test builds are issues from the access-request form. Filed: the channel the form names becomes a label.
+# Labelled approved by a maintainer: the account is invited, read only, to the private testers repository and told on
+# the issue, which closes; for the beta before it has a build, the request waits on the waitlist and the release
+# workflow invites it with the first beta. Labelled declined: told on the issue, which closes.
+# Only people who can label issues here (triage or more) can approve or decline. Nothing from the issue's text reaches a
+# shell except the channel, which is matched against two fixed words first.
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: access-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  channel:
+    if: github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'access-request')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label the channel
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BODY: ${{ github.event.issue.body }}
+          NUMBER: ${{ github.event.issue.number }}
+        run: |
+          channel=$(printf '%s\n' "$BODY" | awk '/^### Channel/{getline; getline; print; exit}' | tr -d '\r' | tr '[:upper:]' '[:lower:]')
+          case "$channel" in alpha|beta) ;; *) channel=alpha ;; esac
+          gh issue edit "$NUMBER" --repo "$GITHUB_REPOSITORY" --add-label "$channel"
+
+  decide:
+    if: github.event.action == 'labeled' && contains(github.event.issue.labels.*.name, 'access-request') && (github.event.label.name == 'approved' || github.event.label.name == 'declined')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invite, wait or decline
+        env:
+          # a token that can add collaborators to the testers repository and write issues here
+          GH_TOKEN: ${{ secrets.TESTERS_TOKEN }}
+          LABEL: ${{ github.event.label.name }}
+          WHO: ${{ github.event.issue.user.login }}
+          NUMBER: ${{ github.event.issue.number }}
+          BETA: ${{ contains(github.event.issue.labels.*.name, 'beta') }}
+        run: |
+          testers=arshadaiyoob/jaeger-toolkit-v2-testers
+          repo="$GITHUB_REPOSITORY"
+          if [ "$LABEL" = declined ]; then
+            gh issue comment "$NUMBER" --repo "$repo" --body "Thanks for asking. This request was not approved this time."
+            gh issue close "$NUMBER" --repo "$repo" --reason "not planned"
+            exit 0
+          fi
+          if [ "$BETA" = true ] && ! gh release list --repo "$testers" --limit 100 --json tagName --jq '.[].tagName' | grep -q -- '-beta\.'; then
+            gh issue edit "$NUMBER" --repo "$repo" --add-label waitlist
+            gh issue comment "$NUMBER" --repo "$repo" --body "Approved, and you are on the beta waitlist. Your account is invited when the first beta ships, and you hear about it here."
+            exit 0
+          fi
+          gh api -X PUT "repos/${testers}/collaborators/${WHO}" -f permission=pull >/dev/null
+          gh issue edit "$NUMBER" --repo "$repo" --add-label invited
+          gh issue comment "$NUMBER" --repo "$repo" --body "You are in. Accept the invite GitHub emailed you, then download the newest test build from https://github.com/${testers}/releases while signed in to this account."
+          gh issue close "$NUMBER" --repo "$repo" --reason completed
