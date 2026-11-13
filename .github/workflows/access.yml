@@ -59,5 +59,6 @@ jobs:
           fi
           gh api -X PUT "repos/${testers}/collaborators/${WHO}" -f permission=pull >/dev/null
           gh issue edit "$NUMBER" --repo "$repo" --add-label invited
-          gh issue comment "$NUMBER" --repo "$repo" --body "You are in. Accept the invite GitHub emailed you, then download the newest test build from https://github.com/${testers}/releases while signed in to this account."
+          channel=alpha; [ "$BETA" = true ] && channel=beta
+          gh issue comment "$NUMBER" --repo "$repo" --body "Welcome to the ${channel}, @${WHO}. Your account is invited to the testers repository. Your welcome page has the invite, the download and the setup: https://arshadaiyoob.github.io/jaeger-toolkit-v2-releases/#welcome/${channel}/${WHO}"
           gh issue close "$NUMBER" --repo "$repo" --reason completed
